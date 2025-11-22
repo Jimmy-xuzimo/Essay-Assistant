@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI作文助手</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;700&display=swap');
+        
+        :root {
+            /* Light Theme (Original) */
+            --primary-color: #f8f9ff;
+            --secondary-color: #e8e9ff;
+            --accent-color: #6366f1;
+            --accent-hover: #5855eb;
+            --text-color: #1f2937;
+            --light-text: #6b7280;
+            --white: #ffffff;
+            --shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+            --shadow-hover: 0 8px 24px rgba(99, 102, 241, 0.2);
+            
+            /* Semantic Mappings */
+            --bg-body: var(--primary-color);
+            --bg-card: var(--white);
+            --bg-input: var(--white);
+            --border-color: var(--secondary-color);
+            --heading-color: var(--accent-color);
+            --result-border: var(--secondary-color);
+            
+            /* Layout */
+            --rounded-xl: 20px;
+            --rounded-lg: 16px;
+            --rounded-md: 12px;
+            --rounded-sm: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Dark Theme (Purple Night Mode) */
+        [data-theme="dark"] {
+            --bg-body: #0f1020; /* Deep dark purple/black */
+            --bg-card: #1a1b36; /* Dark purple card background */
+            --bg-input: #14152a; /* Input background */
+            --border-color: #2d2f55;
+            --accent-color: #818cf8; /* Lighter indigo for contrast on dark */
+            --accent-hover: #6366f1;
+            --text-color: #e2e8f0; /* Light gray text */
+            --light-text: #94a3b8;
+            --white: #1a1b36; /* Remap white to card bg */
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
+            --result-border: #2d2f55;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Serif SC', serif;
+            background: var(--bg-body);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 15px;
+            max-width: 100%;
+            overflow-x: hidden;
+            word-wrap: break-word;
+            min-height: 100vh;
+            /* Transition removed here to prevent conflict with View Transition API */
+        }
+        
+        /* Fallback: Only apply CSS transition if View Transitions are NOT supported */
+        @supports not (view-transition-name: none) {
+            body {
+                transition: background-color 0.3s ease, color 0.3s ease;
+            }
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 15px;
+        }
+
+        /* Theme Toggle Button */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--bg-card);
+            color: var(--accent-color);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1) rotate(15deg);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+        
+        h1 {
+            color: var(--heading-color);
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .subtitle {
+            color: var(--light-text);
+            font-size: 0.9rem;
+        }
+        
+        .input-section {
+            background-color: var(--bg-card);
+            border-radius: var(--rounded-md);
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow);
+            animation: fadeIn 1s ease-out;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+        
+        .input-section:hover {
+            transform: translateY(-5px);
+        }
+        
+        .input-group {
+            margin-bottom: 24px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color);
+            transition: var(--transition);
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+            outline: none;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: var(--accent-color);
+            font-size: 0.95rem;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--rounded-md);
+            font-family: inherit;
+            font-size: 0.95rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background-color: var(--bg-input);
+            color: var(--text-color);
+        }
+        
+        select {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3e%3cpath stroke='%236366f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3e%3c/svg%3e");
+            background-position: right 16px center;
+            background-repeat: no-repeat;
+            background-size: 20px;
+            padding-right: 48px;
+            cursor: pointer;
+        }
+        
+        select:hover {
+            border-color: var(--accent-color);
+        }
+
+        /* In dark mode, use lighter accent color for the arrow */
+        [data-theme="dark"] select {
+             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3e%3cpath stroke='%23818cf8' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3e%3c/svg%3e");
+        }
+        
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .btn {
+            background-color: var(--accent-color);
+            color: white; /* Always white text on buttons */
+            border: none;
+            padding: 14px 28px;
+            border-radius: var(--rounded-md);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: var(--transition);
+            width: 100%;
+            max-width: 280px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover {
+            background-color: var(--accent-hover);
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background-color: #d4d6fc; /* Unified pale purple background */
+            color: #4f46e5; /* Darker indigo text */
+        }
+        
+        .btn-secondary:hover {
+            background-color: #c0c3fa; /* Slightly darker/richer on hover */
+            color: #3730a3;
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.25); /* Enhanced glow */
+        }
+
+        .btn-secondary:active {
+            background-color: #a5a8f2; /* Distinct "pressed" purple */
+            color: #312e81;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.15); /* Reduced shadow */
+            transform: translateY(0) scale(0.98); /* Subtle shrink for click feel */
+        }
+        
+        [data-theme="dark"] .btn-secondary {
+            background-color: #2d2f55;
+            color: var(--accent-color);
+            border: 1px solid transparent;
+        }
+
+        [data-theme="dark"] .btn-secondary:hover {
+            background-color: #3a3d6e;
+            color: #ffffff;
+            border-color: rgba(129, 140, 248, 0.3);
+            box-shadow: 0 0 15px rgba(129, 140, 248, 0.2);
+        }
+        
+        [data-theme="dark"] .btn-secondary:active {
+            background-color: #252746;
+            transform: translateY(0) scale(0.98);
+            box-shadow: none;
+        }
+        
+        .result-section, .essay-section {
+            background-color: var(--bg-card);
+            border-radius: var(--rounded-md);
+            padding: 24px;
+            margin-bottom: 32px;
+            box-shadow: var(--shadow);
+            animation: fadeIn 1.2s ease-out;
+            display: none;
+            word-break: break-word;
+            transition: var(--transition);
+            border: 1px solid var(--border-color);
+        }
+
+        /* Section Header Styles (Collapse/Expand) */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--result-border);
+            margin-bottom: 15px;
+            cursor: pointer;
+            user-select: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .section-header:hover .section-toggle {
+            transform: scale(1.1);
+            background-color: rgba(99, 102, 241, 0.1);
+        }
+
+        .section-header.collapsed {
+            border-bottom-color: transparent;
+            margin-bottom: 0;
+        }
+
+        .result-title, .essay-title {
+            color: var(--heading-color);
+            font-size: 1.5rem;
+            margin-bottom: 0;
+            text-align: center;
+            flex-grow: 1;
+        }
+        
+        .section-toggle {
+            background: none;
+            border: none;
+            padding: 4px;
+            margin: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--accent-color);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        .section-header.collapsed .section-toggle {
+            transform: rotate(180deg);
+        }
+
+        .collapsible-content {
+            display: grid;
+            grid-template-rows: 1fr;
+            transition: grid-template-rows 0.3s ease-out, opacity 0.3s ease-out;
+            opacity: 1;
+        }
+
+        .collapsible-content.is-collapsed {
+            grid-template-rows: 0fr;
+            opacity: 0;
+        }
+
+        .collapsible-inner {
+            overflow: hidden;
+        }
+
+        .result-content {
+            margin-bottom: 15px;
+            font-size: 0.95rem;
+            line-height: 1.7;
+            color: var(--text-color);
+        }
+
+        .result-item {
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 1px dashed var(--result-border);
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 700;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+            font-size: 1rem;
+        }
+
+        .result-text {
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 15px;
+            display: none;
+            color: var(--text-color);
+        }
+        
+        .spinner {
+            width: 35px;
+            height: 35px;
+            margin: 0 auto 12px;
+            border: 4px solid rgba(147, 112, 219, 0.2);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            -webkit-animation: spin 1s linear infinite;
+            -moz-animation: spin 1s linear infinite;
+        }
+        
+        footer {
+            text-align: center;
+            color: var(--light-text);
+            font-size: 0.8rem;
+            margin-top: 30px;
+            animation: fadeIn 1.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .essay-content {
+            line-height: 1.8;
+            font-size: 0.95rem;
+            color: var(--text-color);
+        }
+        
+        .essay-paragraph {
+            margin-bottom: 12px;
+            text-indent: 2em;
+            color: var(--text-color);
+        }
+        
+        /* View Transition Animations */
+        ::view-transition-old(root),
+        ::view-transition-new(root) {
+            animation: none;
+            mix-blend-mode: normal;
+        }
+
+        /* Light -> Dark (New Dark theme on top) */
+        ::view-transition-new(root) {
+             z-index: 9999;
+        }
+        ::view-transition-old(root) {
+             z-index: 1;
+        }
+        
+        /* Dark -> Light (Old Dark theme on top, shrinking) */
+        [data-theme="light"]::view-transition-old(root) {
+            z-index: 9999;
+        }
+        [data-theme="light"]::view-transition-new(root) {
+            z-index: 1;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 700px;
+                padding: 24px;
+            }
+            
+            h1 {
+                font-size: 2.4rem;
+            }
+            
+            .subtitle {
+                font-size: 1.15rem;
+            }
+            
+            .input-section {
+                padding: 32px;
+                border-radius: var(--rounded-md);
+            }
+            
+            .button-container {
+                flex-direction: row;
+                justify-content: center;
+                gap: 20px;
+            }
+            
+            .btn {
+                width: auto;
+                max-width: 200px;
+            }
+            
+            .result-section, .essay-section {
+                padding: 32px;
+                border-radius: var(--rounded-md);
+            }
+            
+            .result-title, .essay-title {
+                font-size: 1.9rem;
+                /* Margin removed in favor of header layout */
+            }
+            
+            input, textarea, select {
+                padding: 14px 18px;
+                font-size: 1rem;
+            }
+        }
+        
+        @media (min-width: 992px) {
+            .container {
+                max-width: 1000px;
+            }
+            
+            .input-section, .result-section, .essay-section {
+                padding: 40px;
+            }
+        }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" id="themeToggle" aria-label="切换主题">🌓</button>
+
+    <div class="container">
+        <header>
+            <h1>AI作文助手</h1>
+            <p class="subtitle">AI助力高考议论文写作 · 一键生成高质量论据和范文</p>
+        </header>
+        
+        <section class="input-section">
+            <div class="input-group">
+                <label for="topic">论据主题</label>
+                <input type="text" id="topic" placeholder="例如：科技创新、环境保护、传统文化...">
+            </div>
+            
+            <div class="input-group">
+                <label for="keywords">关键词（可选，用逗号分隔）</label>
+                <input type="text" id="keywords" placeholder="例如：人工智能,可持续发展,文化传承">
+            </div>
+            
+            <div class="input-group">
+                <label for="style">论据风格</label>
+                <select id="style">
+                    <option value="简洁明了">简洁明了</option>
+                    <option value="生动形象">生动形象</option>
+                    <option value="学术严谨">学术严谨</option>
+                    <option value="富有文采">富有文采</option>
+                </select>
+            </div>
+            
+            <div class="button-container">
+                <button id="generateBtn" class="btn btn-secondary">生成论据范例</button>
+                <button id="generateEssayBtn" class="btn btn-secondary">生成完整议论文</button>
+            </div>
+        </section>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>AI正在思考中，请稍候...</p>
+        </div>
+        
+        <section class="result-section" id="resultSection">
+            <div class="section-header" id="resultHeader">
+                <div style="width: 32px;"></div> <!-- Spacer for centering -->
+                <h2 class="result-title">论据范例</h2>
+                <button class="section-toggle" aria-label="折叠/展开">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+            </div>
+            <div class="collapsible-content" id="resultCollapse">
+                <div class="collapsible-inner">
+                    <div class="result-content" id="resultContent"></div>
+                </div>
+            </div>
+        </section>
+        
+        <section class="essay-section" id="essaySection">
+            <div class="section-header" id="essayHeader">
+                <div style="width: 32px;"></div> <!-- Spacer for centering -->
+                <h2 class="essay-title" id="essayTitle"></h2>
+                <button class="section-toggle" aria-label="折叠/展开">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+            </div>
+            <div class="collapsible-content" id="essayCollapse">
+                <div class="collapsible-inner">
+                    <div class="essay-content" id="essayContent"></div>
+                </div>
+            </div>
+        </section>
+        
+        <footer>
+            <p>© 2025 AI作文助手 | 为高考学子打造的AI写作助手</p>
+        </footer>
+    </div>
+
+    <script>
+        // ⚠️ API密钥直接存储在前端（仅限自用，请勿公开分享）
+        const API_KEY = "sk-6236781e5b2a4483b5de76736c4ad5f8";
+        const API_URL = "https://api.deepseek.com/v1/chat/completions";
+        
+        // Theme Toggle Logic
+        const themeToggle = document.getElementById('themeToggle');
+        
+        // Check local storage
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+
+        const enableTransitions = () =>
+            'startViewTransition' in document &&
+            window.matchMedia('(prefers-reduced-motion: no-preference)').matches;
+
+        async function toggleTheme({ clientX: x, clientY: y }) {
+            // Determine next state
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            
+            // Update local storage
+            localStorage.setItem('theme', newTheme);
+
+            if (!enableTransitions()) {
+                document.documentElement.setAttribute('data-theme', newTheme);
+                return;
+            }
+
+            const isSwitchingToDark = newTheme === 'dark';
+
+            // Calculate distance to furthest corner
+            const endRadius = Math.hypot(
+                Math.max(x, innerWidth - x),
+                Math.max(y, innerHeight - y)
+            );
+
+            const clipPath = [
+                `circle(0px at ${x}px ${y}px)`,
+                `circle(${endRadius}px at ${x}px ${y}px)`
+            ];
+
+            // Start transition
+            await document.startViewTransition(() => {
+                document.documentElement.setAttribute('data-theme', newTheme);
+            }).ready;
+
+            // Animate the clip-path
+            document.documentElement.animate(
+                { 
+                    clipPath: isSwitchingToDark ? clipPath : [...clipPath].reverse()
+                },
+                {
+                    duration: 400,
+                    easing: 'ease-in',
+                    // Target the pseudo-element that is "on top"
+                    pseudoElement: isSwitchingToDark 
+                        ? '::view-transition-new(root)' 
+                        : '::view-transition-old(root)'
+                }
+            );
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+        
+        // Section Collapse Logic
+        function setupCollapsible(headerId, collapseId) {
+            const header = document.getElementById(headerId);
+            const collapse = document.getElementById(collapseId);
+            
+            if (header && collapse) {
+                header.addEventListener('click', () => {
+                    header.classList.toggle('collapsed');
+                    collapse.classList.toggle('is-collapsed');
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const generateBtn = document.getElementById('generateBtn');
+            const generateEssayBtn = document.getElementById('generateEssayBtn');
+            const loading = document.getElementById('loading');
+            const resultSection = document.getElementById('resultSection');
+            const resultContent = document.getElementById('resultContent');
+            const essaySection = document.getElementById('essaySection');
+            const essayContent = document.getElementById('essayContent');
+            const essayTitle = document.getElementById('essayTitle');
+            
+            // Setup Collapsibles
+            setupCollapsible('resultHeader', 'resultCollapse');
+            setupCollapsible('essayHeader', 'essayCollapse');
+            
+            generateBtn.addEventListener('click', generateExamples);
+            generateEssayBtn.addEventListener('click', generateEssay);
+            
+            async function generateExamples() {
+                const topic = document.getElementById('topic').value.trim();
+                const keywords = document.getElementById('keywords').value.trim();
+                const style = document.getElementById('style').value;
+                
+                if (!topic) {
+                    alert('请输入论据主题');
+                    return;
+                }
+                
+                loading.style.display = 'block';
+                resultSection.style.display = 'none';
+                essaySection.style.display = 'none';
+                
+                try {
+                    const prompt = `请作为高考语文写作专家，根据以下要求生成3个高质量的议论文论据，输出内容请严格遵循格式要求，避免在开头和结尾添加任何额外的说明文字或分隔符：
+
+主题：${topic}
+${keywords ? `关键词：${keywords}` : ''}
+风格要求：${style}
+
+请严格按照以下格式输出每个论据，不要使用任何特殊格式标记如---、***等：
+论据一：
+【素材】简洁明了地描述事实、数据或事例
+【分析】从不同角度分析素材的意义和价值
+【适用论点】说明该论据可以用于支持哪些论点
+【出处】标明素材的来源（如新闻事件、历史事实、名人名言等）
+
+论据二：
+【素材】简洁明了地描述事实、数据或事例
+【分析】从不同角度分析素材的意义和价值
+【适用论点】说明该论据可以用于支持哪些论点
+【出处】标明素材的来源（如新闻事件、历史事实、名人名言等）
+
+论据三：
+【素材】简洁明了地描述事实、数据或事例
+【分析】从不同角度分析素材的意义和价值
+【适用论点】说明该论据可以用于支持哪些论点
+【出处】标明素材的来源（如新闻事件、历史事实、名人名言等）
+
+请确保论据真实可靠、具有代表性，且适合高考议论文使用。`;
+                    
+                    const response = await callDeepSeekAPI(prompt);
+                    resultContent.innerHTML = formatExamples(response);
+                    resultSection.style.display = 'block';
+                    
+                    // Reset collapse state when generating new content
+                    document.getElementById('resultHeader').classList.remove('collapsed');
+                    document.getElementById('resultCollapse').classList.remove('is-collapsed');
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('生成论据时出错：' + error.message);
+                } finally {
+                    loading.style.display = 'none';
+                }
+            }
+            
+            async function generateEssay() {
+                const topic = document.getElementById('topic').value.trim();
+                const keywords = document.getElementById('keywords').value.trim();
+                const style = document.getElementById('style').value;
+                
+                if (!topic) {
+                    alert('请输入论据主题');
+                    return;
+                }
+                
+                loading.style.display = 'block';
+                resultSection.style.display = 'none';
+                essaySection.style.display = 'none';
+                
+                try {
+                    const prompt = `请作为高考语文阅卷专家，根据以下要求生成一篇高质量的议论文，输出内容请严格遵循格式要求，避免在开头和结尾添加任何额外的说明文字或分隔符：
+
+作文主题：${topic}
+${keywords ? `相关关键词：${keywords}` : ''}
+风格要求：${style}
+
+要求：
+1. 自拟一个恰当、有文采的标题
+2. 全文约800字，符合高考作文要求
+3. 结构完整，包含引论、本论和结论
+4. 论点明确，论据充分，论证严密
+5. 使用多种论证方法（举例、引用、对比等）
+6. 语言流畅，富有文采，适当使用修辞手法
+7. 思想深刻，有独到见解
+
+请严格按照以下格式输出：
+[标题]
+[正文]
+段落内容1
+
+段落内容2
+
+段落内容3
+
+[素材来源]
+列出使用的主要素材来源
+
+请确保输出简洁明了，不包含任何额外的格式标记如---、***等，不要在开头和结尾添加任何无关内容。`;
+                    
+                    const response = await callDeepSeekAPI(prompt);
+                    const { title, content } = parseEssayResponse(response);
+                    essayTitle.textContent = title;
+                    essayContent.innerHTML = formatEssayContent(content);
+                    essaySection.style.display = 'block';
+                    
+                    // Reset collapse state when generating new content
+                    document.getElementById('essayHeader').classList.remove('collapsed');
+                    document.getElementById('essayCollapse').classList.remove('is-collapsed');
+
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('生成议论文时出错：' + error.message);
+                } finally {
+                    loading.style.display = 'none';
+                }
+            }
+            
+            async function callDeepSeekAPI(prompt) {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-chat",
+                        messages: [{ role: "user", content: prompt }],
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `API请求失败: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data.choices[0].message.content;
+            }
+            
+            function formatExamples(text) {
+                text = text.replace(/["”“]---["”“]|^\s*---\s*|\s*---\s*$/g, '');
+                text = text.replace(/^\s*\*{3}|\*{3}\s*$/g, '');
+                text = text.trim();
+                
+                let html = '';
+                const evidenceRegex = /论据[一二三四五六七八九十]+：([\s\S]*?)(?=论据[一二三四五六七八九十]+：|$)/g;
+                let match;
+                
+                while ((match = evidenceRegex.exec(text)) !== null) {
+                    const evidenceContent = match[1];
+                    let itemHtml = '<div class="result-item">';
+                    
+                    const materialMatch = evidenceContent.match(/【素材】\s*(.*?)(?=【分析】|【适用论点】|【出处】|$)/s);
+                    const analysisMatch = evidenceContent.match(/【分析】\s*(.*?)(?=【适用论点】|【出处】|$)/s);
+                    const applicablePointsMatch = evidenceContent.match(/【适用论点】\s*(.*?)(?=【出处】|$)/s);
+                    const sourceMatch = evidenceContent.match(/【出处】\s*(.*?)$/s);
+                    
+                    if (materialMatch) {
+                        itemHtml += `<div class="result-label">素材</div>`;
+                        itemHtml += `<div class="result-text">${materialMatch[1].trim().replace(/\n/g, '<br>')}</div>`;
+                    }
+                    
+                    if (analysisMatch) {
+                        itemHtml += `<div class="result-label">分析</div>`;
+                        itemHtml += `<div class="result-text">${analysisMatch[1].trim().replace(/\n/g, '<br>')}</div>`;
+                    }
+                    
+                    if (applicablePointsMatch) {
+                        itemHtml += `<div class="result-label">适用论点</div>`;
+                        itemHtml += `<div class="result-text">${applicablePointsMatch[1].trim().replace(/\n/g, '<br>')}</div>`;
+                    }
+                    
+                    if (sourceMatch) {
+                        itemHtml += `<div class="result-label">出处</div>`;
+                        itemHtml += `<div class="result-text">${sourceMatch[1].trim().replace(/\n/g, '<br>')}</div>`;
+                    }
+                    
+                    itemHtml += '</div>';
+                    html += itemHtml;
+                }
+                
+                if (!html) {
+                    const parts = text.split(/【(.*?)】/);
+                    let sectionHtml = '<div class="result-item">';
+                    for (let i = 0; i < parts.length; i++) {
+                        if (i % 2 === 1) {
+                            sectionHtml += `<div class="result-label">${parts[i]}</div>`;
+                        } else if (parts[i].trim()) {
+                            sectionHtml += `<div class="result-text">${parts[i].trim().replace(/\n/g, '<br>')}</div>`;
+                        }
+                    }
+                    sectionHtml += '</div>';
+                    html = sectionHtml;
+                }
+                
+                return html || `<p>${text.replace(/\n/g, '<br>')}</p>`;
+            }
+            
+            function parseEssayResponse(text) {
+                text = text.replace(/["”“]---["”“]|^\s*---\s*|\s*---\s*$/g, '');
+                text = text.replace(/^\s*\*{3}|\*{3}\s*$/g, '');
+                text = text.trim();
+                
+                let title = '';
+                let content = '';
+                
+                const titleMatch = text.match(/\[标题\]\s*(.*?)(?=\[正文\]|$)/s);
+                if (titleMatch) {
+                    title = titleMatch[1].trim();
+                } else {
+                    title = text.split('\n')[0].trim();
+                    if (title.startsWith('标题：')) {
+                        title = title.substring(3).trim();
+                    }
+                }
+                
+                const bodyMatch = text.match(/\[正文\]\s*(.*?)(?=\[素材来源\]|$)/s);
+                if (bodyMatch) {
+                    content = bodyMatch[1].trim();
+                } else {
+                    const bodyStart = text.indexOf('【正文】');
+                    content = bodyStart >= 0 ? text.substring(bodyStart + 4) : text;
+                }
+                
+                return { title, content };
+            }
+            
+            function formatEssayContent(text) {
+                const paragraphs = text.split('\n\n').filter(p => p.trim());
+                let html = '';
+                paragraphs.forEach(para => {
+                    if (para.trim()) {
+                        html += `<p class="essay-paragraph">${para.trim().replace(/\n/g, '<br>')}</p>`;
+                    }
+                });
+                return html;
+            }
+        });
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
