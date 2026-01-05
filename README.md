@@ -1,6 +1,7 @@
 # AI 作文助手 (AI Essay Assistant)
 
 一款基于 DeepSeek AI 的高考议论文写作辅助工具，专为高中生打造。支持一键生成高质量论据素材和完整范文，帮助学生拓展写作思路。
+<img width="4400" height="2722" alt="image" src="https://github.com/user-attachments/assets/4194975e-eaf5-466f-8258-b92f2222aedf" />
 
 ## ✨ 主要功能
 
